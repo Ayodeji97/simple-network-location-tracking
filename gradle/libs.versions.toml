@@ -5,9 +5,20 @@ coreKtx = "1.16.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
-lifecycleRuntimeKtx = "2.8.7"
+lifecycleRuntimeKtx = "2.9.0"
 activityCompose = "1.10.1"
 composeBom = "2024.04.01"
+kotlinx-datetime = "0.6.2"
+room = "2.6.1"
+gmsLocation = "21.3.0"
+desugarJdkLibs = "2.1.5"
+ksp = "2.0.0-1.0.22"
+koin = "3.5.6"
+roomRuntimeAndroid = "2.7.1"
+kotlinxCoroutines = "1.8.1"
+turbine = "1.1.0"
+assertk = "0.28.1"
+junitJupiter = "5.10.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -25,8 +36,72 @@ androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-man
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 
+# Lifecycle - viewmidel
+androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycleRuntimeKtx" }
+androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
+
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+
+# GMS Location
+google-android-gms-play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "gmsLocation"}
+
+# Desugar
+desugar-Jdk-Libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugarJdkLibs" }
+
+koin-android = { group = "io.insert-koin", name = "koin-android", version.ref = "koin" }
+koin-core = { group = "io.insert-koin", name = "koin-core", version.ref = "koin" }
+koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compose", version.ref = "koin" }
+koin-test = { group = "io.insert-koin", name = "koin-test", version.ref = "koin" }
+koin-test-junit5 = { group = "io.insert-koin", name = "koin-test-junit5", version.ref = "koin" }
+
+
+room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-runtime-android = { group = "androidx.room", name = "room-runtime-android", version.ref = "roomRuntimeAndroid" }
+
+# Coroutines
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
+
+# Testing
+turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+assertk = { group = "com.willowtreeapps.assertk", name = "assertk", version.ref = "assertk" }
+junit-jupiter-api = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.ref = "junitJupiter" }
+junit-jupiter-engine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junitJupiter" }
+junit-jupiter-params = { group = "org.junit.jupiter", name = "junit-jupiter-params", version.ref = "junitJupiter" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+room = { id = "androidx.room", version.ref = "room" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+
+
+
+[bundles]
+
+koin = [
+    "koin-core",
+    "koin-android",
+    "koin-androidx-compose"
+]
+
+coroutines = [
+    "kotlinx-coroutines-core",
+    "kotlinx-coroutines-android",
+]
+
+junit5 = [
+    "junit-jupiter-api",
+    "junit-jupiter-params",
+]
+
+coroutines-test = [
+    "kotlinx-coroutines-test",
+    "turbine",
+    "assertk",
+]
 

@@ -1,3 +1,29 @@
 <resources>
     <string name="app_name">NetworkLocationTracker</string>
+
+    <!-- Foreground service -->
+    <string name="tracking_channel_name">Network tracking</string>
+    <string name="tracking_channel_description">Ongoing notification while the app is recording network outages.</string>
+    <string name="tracking_notification_title">Tracking network</string>
+    <string name="tracking_notification_text">Recording where and when your network drops.</string>
+    <string name="tracking_notification_stop">Stop</string>
+
+    <!-- Screen -->
+    <string name="screen_title">Network Tracker</string>
+    <string name="status_connected">Connected</string>
+    <string name="status_disconnected">Disconnected</string>
+    <string name="status_paused">Tracking paused</string>
+    <string name="status_determining">Determining network status…</string>
+    <string name="action_start_tracking">Start tracking</string>
+    <string name="action_stop_tracking">Stop tracking</string>
+    <string name="empty_outages">No outages recorded. Start tracking to begin.</string>
+    <string name="label_lost">Lost at</string>
+    <string name="label_restored">Restored at</string>
+    <string name="label_duration">Duration</string>
+    <string name="label_ongoing">Ongoing</string>
+    <string name="label_server_reachable">Server reachable</string>
+    <string name="label_server_unreachable">Server unreachable</string>
+    <string name="permissions_required_title">Permissions needed</string>
+    <string name="permissions_required_body">We need location and notification permissions to record where your network drops and to keep the tracker running in the background.</string>
+    <string name="permissions_required_retry">Grant permissions</string>
 </resources>
