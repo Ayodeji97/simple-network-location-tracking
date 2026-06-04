@@ -16,9 +16,13 @@ import com.danzucker.networklocationtracker.core.domain.networktracker.NetworkWi
 import com.danzucker.networklocationtracker.core.domain.util.Result
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +30,9 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
@@ -40,6 +46,7 @@ const val SERVER_ADDRESS = "8.8.8.8"
 const val INITIAL_TIMEOUT_MS = 1000
 const val MAX_ATTEMPTS = 3
 const val LOCATION_INTERVAL_MS = 5_000L
+const val REACHABILITY_POLL_INTERVAL_MS = 30_000L
 
 class NetworkWithLocationTracker(
     private val locationObserver: LocationObserver,
@@ -70,9 +77,7 @@ class NetworkWithLocationTracker(
             if (!isConnected) {
                 flowOf(DISCONNECTED)
             } else {
-                serverPinger
-                    .pingServer(SERVER_ADDRESS, INITIAL_TIMEOUT_MS, MAX_ATTEMPTS)
-                    .map { reachable -> if (reachable) CONNECTED else DISCONNECTED }
+                reachabilityStatusFlow()
             }
         }
         .catch { e ->
@@ -98,6 +103,25 @@ class NetworkWithLocationTracker(
             }
             .onEach(::handleNetworkWithLocation)
             .launchIn(scope)
+
+    private fun reachabilityStatusFlow(): Flow<NetworkStatus> = flow {
+        while (currentCoroutineContext().isActive) {
+            val status = try {
+                val reachable = serverPinger
+                    .pingServer(SERVER_ADDRESS, INITIAL_TIMEOUT_MS, MAX_ATTEMPTS)
+                    .first()
+                if (reachable) CONNECTED else DISCONNECTED
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _trackingEvents.emit(TrackingEvent.Error("Network status error: ${e.message}"))
+                DISCONNECTED
+            }
+
+            emit(status)
+            delay(REACHABILITY_POLL_INTERVAL_MS)
+        }
+    }
 
     private suspend fun handleNetworkWithLocation(snapshot: NetworkWithLocation) {
         when (snapshot.networkStatus) {

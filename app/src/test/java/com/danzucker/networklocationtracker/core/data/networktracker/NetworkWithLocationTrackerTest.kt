@@ -17,6 +17,7 @@ import com.danzucker.networklocationtracker.fakes.FakeNetworkOutageRepository
 import com.danzucker.networklocationtracker.fakes.FakeServerPinger
 import com.danzucker.networklocationtracker.fakes.fakeLocation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Instant
@@ -119,6 +120,58 @@ class NetworkWithLocationTrackerTest {
             val event = awaitItem()
             assertThat(event).isInstanceOf(TrackingEvent.OutageStarted::class)
             assertThat((event as TrackingEvent.OutageStarted).outage.isServerReachable).isFalse()
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `server outage is detected while device connectivity stays connected`() = runTest(dispatcher) {
+        val pinger = FakeServerPinger(nextResult = true)
+        val b = buildTracker(pinger = pinger)
+        b.tracker.startTracking(backgroundScope)
+
+        b.tracker.trackingEvents.test {
+            b.checker.emit(true)
+            assertThat(b.tracker.currentStatus.value).isEqualTo(NetworkStatus.CONNECTED)
+
+            pinger.nextResult = false
+            advanceTimeBy(REACHABILITY_POLL_INTERVAL_MS)
+            b.location.emit(fakeLocation(lat = 10.0, lon = 20.0))
+
+            val event = awaitItem()
+            assertThat(event).isInstanceOf(TrackingEvent.OutageStarted::class)
+            assertThat((event as TrackingEvent.OutageStarted).outage.isServerReachable).isFalse()
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `server recovery is detected while device connectivity stays connected`() = runTest(dispatcher) {
+        var now = 1_000_000L
+        val pinger = FakeServerPinger(nextResult = false)
+        val b = buildTracker(
+            pinger = pinger,
+            clock = { Instant.fromEpochMilliseconds(now) },
+        )
+        b.tracker.startTracking(backgroundScope)
+
+        b.tracker.trackingEvents.test {
+            b.checker.emit(true)
+            b.location.emit(fakeLocation(lat = 10.0, lon = 20.0))
+            assertThat(awaitItem()).isInstanceOf(TrackingEvent.OutageStarted::class)
+
+            pinger.nextResult = true
+            now += 4_000
+            advanceTimeBy(REACHABILITY_POLL_INTERVAL_MS)
+            b.location.emit(fakeLocation(lat = 11.0, lon = 21.0))
+
+            val event = awaitItem()
+            assertThat(event).isInstanceOf(TrackingEvent.OutageEnded::class)
+            val outage = (event as TrackingEvent.OutageEnded).outage
+            assertThat(outage.isServerReachable).isTrue()
+            assertThat(outage.duration.inWholeMilliseconds).isEqualTo(4_000L)
 
             cancelAndIgnoreRemainingEvents()
         }
