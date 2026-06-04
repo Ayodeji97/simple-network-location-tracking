@@ -104,6 +104,35 @@ class NetworkWithLocationTrackerTest {
     }
 
     @Test
+    fun `brief outage with no location is not dropped - start and completion both recorded`() = runTest(dispatcher) {
+        var now = 1_000_000L
+        val b = buildTracker(clock = { Instant.fromEpochMilliseconds(now) })
+        b.tracker.startTracking(backgroundScope)
+
+        b.tracker.trackingEvents.test {
+            // Disconnect then reconnect back-to-back, faster than the location timeout and with no
+            // location ever available. A flatMapLatest design would cancel the disconnect's
+            // in-flight location wait and drop the outage entirely; the queue must not.
+            b.checker.emit(false)
+            now += 3_000
+            b.checker.emit(true)
+
+            // Drain the queue: each transition waits out the best-effort location timeout, then
+            // records with a null location.
+            advanceTimeBy(LOCATION_FIX_TIMEOUT_MS * 2 + 100)
+
+            val started = awaitItem()
+            assertThat(started).isInstanceOf(TrackingEvent.OutageStarted::class)
+            val ended = awaitItem()
+            assertThat(ended).isInstanceOf(TrackingEvent.OutageEnded::class)
+            assertThat((ended as TrackingEvent.OutageEnded).outage.startLocation).isNull()
+            assertThat(ended.outage.duration.inWholeMilliseconds).isEqualTo(3_000L)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `reconnect after disconnect emits OutageEnded with duration and endLocation`() = runTest(dispatcher) {
         var now = 1_000_000L
         val b = buildTracker(clock = { Instant.fromEpochMilliseconds(now) })
