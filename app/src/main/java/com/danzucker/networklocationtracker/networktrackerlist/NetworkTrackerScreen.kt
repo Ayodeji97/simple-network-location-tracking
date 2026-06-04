@@ -179,7 +179,7 @@ private fun OutageCard(outage: NetworkOutageUi) {
 
             OutageRow(
                 label = stringResource(R.string.label_lost),
-                value = outage.startCoordinates,
+                value = outage.startCoordinates ?: stringResource(R.string.label_location_unavailable),
                 subtitle = outage.startAddress,
             )
 

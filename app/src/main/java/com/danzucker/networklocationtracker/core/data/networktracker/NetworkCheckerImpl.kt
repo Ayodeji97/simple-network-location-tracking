@@ -18,10 +18,24 @@ class NetworkCheckerImpl(
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
     override fun isDeviceConnected(): Flow<Boolean> = callbackFlow {
-        // Emit current state synchronously so the downstream flow has a baseline. Without this,
-        // a device that starts the app already in airplane mode never sees a callback (because
-        // the network was lost before we registered), and the tracker would sit silent.
-        trySend(currentlyHasInternet())
+        // Track the set of networks that currently have internet, and report connected as
+        // "at least one such network exists". We do NOT recompute from activeNetwork inside
+        // onLost: at the moment a network is lost, the system can still report it as the active
+        // network with the INTERNET capability cached, so that query lies and we'd never see
+        // the disconnect. The callback delivers events on a single Handler thread, so the plain
+        // set needs no extra synchronization.
+        val networksWithInternet = mutableSetOf<android.net.Network>()
+
+        fun emitConnected() {
+            trySend(networksWithInternet.isNotEmpty())
+        }
+
+        // Seed the baseline so a device that starts the app already offline (e.g. airplane mode)
+        // gets a value without waiting on a callback that may never come.
+        connectivityManager.activeNetwork?.let { active ->
+            if (connectivityManager.hasInternet(active)) networksWithInternet.add(active)
+        }
+        emitConnected()
 
         val request = NetworkRequest.Builder()
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -31,20 +45,25 @@ class NetworkCheckerImpl(
 
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: android.net.Network) {
-                trySend(true)
+                networksWithInternet.add(network)
+                emitConnected()
             }
 
             override fun onLost(network: android.net.Network) {
-                // onLost fires per-network; recompute against the system's overall view rather
-                // than blindly emitting false (e.g. wifi drops while cellular is still up).
-                trySend(currentlyHasInternet())
+                networksWithInternet.remove(network)
+                emitConnected()
             }
 
             override fun onCapabilitiesChanged(
                 network: android.net.Network,
                 networkCapabilities: NetworkCapabilities,
             ) {
-                trySend(networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET))
+                if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                    networksWithInternet.add(network)
+                } else {
+                    networksWithInternet.remove(network)
+                }
+                emitConnected()
             }
         }
 
@@ -54,9 +73,6 @@ class NetworkCheckerImpl(
         awaitClose { connectivityManager.unregisterNetworkCallback(callback) }
     }.distinctUntilChanged()
 
-    private fun currentlyHasInternet(): Boolean {
-        val active = connectivityManager.activeNetwork ?: return false
-        val caps = connectivityManager.getNetworkCapabilities(active) ?: return false
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-    }
+    private fun ConnectivityManager.hasInternet(network: android.net.Network): Boolean =
+        getNetworkCapabilities(network)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
 }

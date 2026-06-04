@@ -9,7 +9,7 @@ import com.danzucker.networklocationtracker.core.data.entity.NetworkOutageEntity
     entities = [
         NetworkOutageEntity::class,
     ],
-    version = 2,
+    version = 3,
 )
 abstract class NetworkOutageDatabase : RoomDatabase() {
     abstract val networkOutageDao: NetworkOutageDao

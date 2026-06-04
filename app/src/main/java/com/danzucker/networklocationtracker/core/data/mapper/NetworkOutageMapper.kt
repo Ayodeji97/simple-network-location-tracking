@@ -20,9 +20,13 @@ fun NetworkOutageEntity.toNetworkOutage(): NetworkOutage {
         id = id,
         startTime = startTime.millisToInstant(),
         endTime = if (endTime == ONGOING_OUTAGE_SENTINEL) Instant.DISTANT_PAST else endTime.millisToInstant(),
-        startLocation = Location("start").apply {
-            latitude = startLatitude
-            longitude = startLongitude
+        startLocation = startLatitude?.let { lat ->
+            startLongitude?.let { lon ->
+                Location("start").apply {
+                    latitude = lat
+                    longitude = lon
+                }
+            }
         },
         endLocation = endLatitude?.let { lat ->
             endLongitude?.let { lon ->
@@ -44,8 +48,8 @@ fun NetworkOutage.toNetworkOutageEntity(): NetworkOutageEntity {
         id = id,
         startTime = startTime.instantToMillis(),
         endTime = if (endTime == Instant.DISTANT_PAST) ONGOING_OUTAGE_SENTINEL else endTime.instantToMillis(),
-        startLatitude = startLocation.latitude,
-        startLongitude = startLocation.longitude,
+        startLatitude = startLocation?.latitude,
+        startLongitude = startLocation?.longitude,
         endLatitude = endLocation?.latitude,
         endLongitude = endLocation?.longitude,
         durationMillis = duration.inWholeMilliseconds,
