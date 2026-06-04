@@ -21,6 +21,7 @@
     <string name="label_restored">Restored at</string>
     <string name="label_duration">Duration</string>
     <string name="label_ongoing">Ongoing</string>
+    <string name="label_location_unavailable">Location unavailable</string>
     <string name="label_server_reachable">Server reachable</string>
     <string name="label_server_unreachable">Server unreachable</string>
     <string name="permissions_required_title">Permissions needed</string>

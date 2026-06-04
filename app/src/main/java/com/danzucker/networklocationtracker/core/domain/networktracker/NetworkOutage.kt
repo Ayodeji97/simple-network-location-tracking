@@ -8,7 +8,8 @@ data class NetworkOutage(
     val id: Long,
     val startTime: Instant,
     val endTime: Instant,
-    val startLocation: Location,
+    // Nullable: outages are recorded even when no location fix was available at the time.
+    val startLocation: Location?,
     val endLocation: Location?,
     val duration: Duration,
     val isServerReachable: Boolean,

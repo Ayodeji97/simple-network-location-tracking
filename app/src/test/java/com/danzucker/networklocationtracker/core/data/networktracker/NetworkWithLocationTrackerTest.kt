@@ -83,6 +83,27 @@ class NetworkWithLocationTrackerTest {
     }
 
     @Test
+    fun `disconnect with no location fix still records an outage`() = runTest(dispatcher) {
+        val b = buildTracker()
+        b.tracker.startTracking(backgroundScope)
+
+        b.tracker.trackingEvents.test {
+            b.checker.emit(false)
+            // No location is ever emitted — simulates indoors/offline where no GPS fix arrives.
+            // The outage must still be recorded once the best-effort timeout elapses.
+            advanceTimeBy(LOCATION_FIX_TIMEOUT_MS + 1)
+
+            val event = awaitItem()
+            assertThat(event).isInstanceOf(TrackingEvent.OutageStarted::class)
+            val outage = (event as TrackingEvent.OutageStarted).outage
+            assertThat(outage.startLocation).isNull()
+            assertThat(b.repo.outages).hasSize(1)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `reconnect after disconnect emits OutageEnded with duration and endLocation`() = runTest(dispatcher) {
         var now = 1_000_000L
         val b = buildTracker(clock = { Instant.fromEpochMilliseconds(now) })

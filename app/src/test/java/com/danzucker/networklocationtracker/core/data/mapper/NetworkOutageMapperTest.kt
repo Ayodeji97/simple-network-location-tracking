@@ -33,8 +33,8 @@ class NetworkOutageMapperTest {
         assertThat(roundTripped.id).isEqualTo(original.id)
         assertThat(roundTripped.startTime).isEqualTo(original.startTime)
         assertThat(roundTripped.endTime).isEqualTo(original.endTime)
-        assertThat(roundTripped.startLocation.latitude).isEqualTo(original.startLocation.latitude)
-        assertThat(roundTripped.startLocation.longitude).isEqualTo(original.startLocation.longitude)
+        assertThat(roundTripped.startLocation?.latitude).isEqualTo(original.startLocation?.latitude)
+        assertThat(roundTripped.startLocation?.longitude).isEqualTo(original.startLocation?.longitude)
         assertThat(roundTripped.endLocation?.latitude).isEqualTo(original.endLocation?.latitude)
         assertThat(roundTripped.duration).isEqualTo(original.duration)
         assertThat(roundTripped.isServerReachable).isEqualTo(original.isServerReachable)
@@ -60,5 +60,25 @@ class NetworkOutageMapperTest {
         val back = entity.toNetworkOutage()
         assertThat(back.endTime).isEqualTo(Instant.DISTANT_PAST)
         assertThat(back.endLocation).isNull()
+    }
+
+    @Test
+    fun `outage with no start location round-trips with null coordinates`() {
+        val original = NetworkOutage(
+            id = 7L,
+            startTime = Instant.fromEpochMilliseconds(1_700_000_000_000),
+            endTime = Instant.DISTANT_PAST,
+            startLocation = null,
+            endLocation = null,
+            duration = kotlin.time.Duration.ZERO,
+            isServerReachable = false,
+        )
+
+        val entity = original.toNetworkOutageEntity()
+        assertThat(entity.startLatitude).isNull()
+        assertThat(entity.startLongitude).isNull()
+
+        val back = entity.toNetworkOutage()
+        assertThat(back.startLocation).isNull()
     }
 }

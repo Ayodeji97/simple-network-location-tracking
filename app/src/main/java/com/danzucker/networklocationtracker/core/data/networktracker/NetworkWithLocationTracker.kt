@@ -31,14 +31,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.datetime.Clock
 import kotlin.time.Duration
 
@@ -47,6 +47,9 @@ const val INITIAL_TIMEOUT_MS = 1000
 const val MAX_ATTEMPTS = 3
 const val LOCATION_INTERVAL_MS = 5_000L
 const val REACHABILITY_POLL_INTERVAL_MS = 30_000L
+
+/** How long to wait for a best-effort location fix before recording an outage without one. */
+const val LOCATION_FIX_TIMEOUT_MS = 10_000L
 
 class NetworkWithLocationTracker(
     private val locationObserver: LocationObserver,
@@ -97,9 +100,16 @@ class NetworkWithLocationTracker(
                 // Capture the timestamp at the moment the status changed, not when the location
                 // arrived — otherwise the outage's startTime is offset by however long the fix took.
                 val timestampOfChange = clock()
-                locationObserver.observeLocation(LOCATION_INTERVAL_MS)
-                    .take(1)
-                    .map { location -> NetworkWithLocation(location, status, timestampOfChange) }
+                flow {
+                    // Best-effort location: wait briefly for a fix, but never block recording on
+                    // one. Indoors/offline a fix can be slow or never arrive — we still record the
+                    // outage, just without coordinates. firstOrNull() also covers the case where the
+                    // location flow completes without emitting (e.g. permission revoked).
+                    val location = withTimeoutOrNull(LOCATION_FIX_TIMEOUT_MS) {
+                        locationObserver.observeLocation(LOCATION_INTERVAL_MS).firstOrNull()
+                    }
+                    emit(NetworkWithLocation(location, status, timestampOfChange))
+                }
             }
             .onEach(::handleNetworkWithLocation)
             .launchIn(scope)
@@ -182,12 +192,14 @@ class NetworkWithLocationTracker(
         }
     }
 
-    private suspend fun Location.resolveAddress(): String? =
-        try {
+    private suspend fun Location?.resolveAddress(): String? {
+        if (this == null) return null
+        return try {
             addressResolver.resolve(latitude, longitude)
         } catch (_: Exception) {
             null
         }
+    }
 }
 
 sealed interface TrackingEvent {

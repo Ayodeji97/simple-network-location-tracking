@@ -5,7 +5,9 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 
 data class NetworkWithLocation(
-    val location: Location,
+    // Nullable: an outage must be recorded even when no GPS fix is available (indoors/offline),
+    // so location is best-effort and may be absent.
+    val location: Location?,
     val networkStatus: NetworkStatus,
     val timestamp: Instant
 )
